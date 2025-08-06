@@ -1,0 +1,43 @@
+{% extends 'ADMIN/adminBase.html' %}
+{% block header %}
+{% load static %}
+<main class="main-area fix">
+    <!-- breadcrumb-area -->
+    <section class="breadcrumb-area">
+        <div class="breadcrumb-bg" data-background="{% static 'assets/img/bg/breadcrumb_bg.png' %}"></div>
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-xl-10">
+                    <div class="breadcrumb-content text-center">
+                        <h3 class="title">View Feedback</h3>
+                        <nav aria-label="breadcrumb">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item"><a href="/adminHome">Home</a></li>
+                                <li class="breadcrumb-item active" aria-current="page">View Feedback</li>
+                            </ol>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <hr>
+    <table class="table table-bordered text-white text-center">
+        <tr>
+            <th>User</th>
+            <th>Title</th>
+            <th>Feedback</th>
+            <th>Date</th>
+        </tr>
+        {% for i in data %}
+        <tr>
+            <td>{{i.uid.name}}</td>
+            <td>{{i.title}}</td>
+            <td>{{i.feedback}}</td>
+            <td>{{i.date}}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+
+    {% endblock %}

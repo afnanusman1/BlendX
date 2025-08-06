@@ -1,0 +1,66 @@
+{% extends "ADMIN/adminBase.html" %}
+{% block header %}
+{% load static %}
+<style>
+    #img {
+        height: 253px;
+        width: 338px;
+    }
+</style>
+<main class="main-area fix">
+    <!-- breadcrumb-area -->
+    <section class="breadcrumb-area">
+        <div class="breadcrumb-bg" data-background="{% static 'assets/img/bg/breadcrumb_bg.png' %}"></div>
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-xl-10">
+                    <div class="breadcrumb-content text-center">
+                        <h3 class="title">View Users</h3>
+                        <nav aria-label="breadcrumb">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item"><a href="/adminHome">Home</a></li>
+                                <li class="breadcrumb-item active" aria-current="page">View Users</li>
+                            </ol>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <hr>
+
+    <section class="blog-area blog-two-area">
+        <div class="container">
+            <div class="row blog-active">
+                {% for i in data %}
+                <div class="col-xl-3">
+                    <div class="blog-post-item">
+                        <div class="blog-post-thumb">
+                            <a><img src="/static/media/{{i.image}}" id="img" alt="img"></a>
+                        </div>
+                        <div class="blog-post-content">
+                            <h3 class="title"><a>{{i.name}}</a></h3>
+                            <span class="post-date">{{i.email}}</span>
+                            <span class="post-date mt-2">{{i.phone}}</span>
+                            <p class="post-date mt-2">{{i.address}}</p>
+                        </div>
+                        <div class="div">
+                            {% if i.loginid.is_active %}
+                            <a href="/rejectUser?id={{i.loginid_id}}" class="btn btn-danger">Reject</a>
+                            <a href="/deleteUser?id={{i.loginid_id}}" class="btn btn-danger">Delete</a>
+                            {% else %}
+                            <a href="/approveUser?id={{i.loginid_id}}" class="btn btn-success">Approve</a>
+                            {% endif %}
+                        </div>
+                        <br>
+                        {% if i.status == 'Requested' %}
+                        <a href="/approveRequest?id={{i.loginid_id}}" class="btn btn-success w-100">Approve Profile Updation</a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    {% endblock %}

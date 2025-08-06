@@ -1,0 +1,287 @@
+     
+     1. Complete System Overview
+     
+                           ┌───────────────────────┐
+                           │    Web Interface      │
+                           │ (Django Templates)    │
+                           └──────────┬────────────┘
+                                      │
+                                      ▼
+┌───────────────────────────────────────────────────────────────┐
+│                       Django Views Layer                      │
+│  ┌─────────────┐       ┌─────────────┐       ┌─────────────┐  │
+│  │   Auth      │       │  Crypto     │       │ Steganography│  │
+│  │ Controller  ├───────► Controller  ├───────► Controller   │  │
+│  └──────┬──────┘       └──────┬──────┘       └──────┬───────┘  │
+│         │                     │                     │          │
+└─────────┼─────────────────────┼─────────────────────┼──────────┘
+          │                     │                     │
+          ▼                     ▼                     ▼
+┌───────────────────┐ ┌─────────────────────┐ ┌───────────────────┐
+│    PostgreSQL     │ │   Encrypted File    │ │    Redis Cache    │
+│    Database       │ │     Storage         │ │ (Session Data)    │
+│ ┌───────────────┐ │ │ ┌─────────────────┐ │ │ ┌───────────────┐ │
+│ │  Person Model │ │ │ │ Encrypted Images│ │ │ │ User Sessions │ │
+│ │  Message Model│ │ │ │ Audio Files     │ │ │ └───────────────┘ │
+│ │  Feedback Model│ │ └─────────────────┘ │ └───────────────────┘
+│ └───────────────┘ │                      │
+└───────────────────┘                      │
+                           ┌───────────────▼───────────────┐
+                           │         External Services     │
+                           │ ┌─────────────────────────────┤
+                           │ │ SMTP Server (Password Delivery) │
+                           │ │ gTTS (Text-to-Speech)       │
+                           │ └─────────────────────────────┘
+                           └───────────────────────────────┘
+
+
+         Steganography Workflow Diagram
+
+
+                         ┌───────────────────────┐
+                │    User Uploads       │
+                │  Image + Secret Text  │
+                └───────────┬───────────┘
+                            │
+                            ▼
+                ┌───────────────────────┐
+                │  Image Preprocessing  │
+                │  (Noise Reduction,    │
+                │   Contrast Adjust)    │
+                └───────────┬───────────┘
+                            │
+                            ▼
+                ┌───────────────────────┐
+                │ Reversible Data Hiding│
+                │  - LSB Modification   │
+                │  - Header Injection   │
+                │  - Checksum Creation  │
+                └───────────┬───────────┘
+                            │
+                            ▼
+                ┌───────────────────────┐
+                │ AES-256 Encryption    │
+                │ (ECB Mode + PKCS7)    │
+                └───────────┬───────────┘
+                            │
+                            ▼
+                ┌───────────────────────┐
+                │   Secure Storage      │
+                │ (Database + File Sys) │
+                └───────────────────────┘
+
+
+
+                3. Sequence Diagram: Compose Mail
+
+
+                User           Django Views          Crypto Engine       Stego Processor       SMTP Server
+  │                 │                      │                    │                   │
+  │─POST Compose───►│                      │                    │                   │
+  │                 │─Validate Input──────►│                    │                   │
+  │                 │─Generate Password───►│                    │                   │
+  │                 │                      │─Encrypt Password─►│                   │
+  │                 │                      │                    │─Embed Data───────►│
+  │                 │                      │                    │─Preprocess Image─►│
+  │                 │◄─Encrypted File──────┼────────────────────┤                   │
+  │                 │─Store Message───────►│                    │                   │
+  │                 │─Send Password Email──────────────────────────────────────────►│
+  │◄─Success─────── │                      │                    │                   │
+
+
+  . Security Architecture
+
+                ┌──────────────────────────────┐
+              │       Security Layers        │
+              ├──────────────────────────────┤
+              │  Django Session Management   │
+              │  (Encrypted Cookies)         │
+              ├──────────────────────────────┤
+              │  AES-256 File Encryption     │
+              │  (ECB Mode + SHA-256 Keys)   │
+              ├──────────────────────────────┤
+              │  RDH Integrity Checks        │
+              │  (Header + Checksum)         │
+              ├──────────────────────────────┤
+              │  Role-Based Access Control   │
+              │  (Admin/User Separation)     │
+              └──────────────────────────────┘
+
+
+              c. State Diagram (User Status)
+
+                         ┌───────────────┐
+           │  Pending      │◄── New Registration
+           └──────┬────────┘
+                   │ Admin Approval
+                   ▼
+           ┌───────────────┐
+           │  Active       │───► Compose Messages
+           └──────┬────────┘
+                   │ Admin Rejection
+                   ▼
+           ┌───────────────┐
+           │  Suspended    │
+           └───────────────┘
+
+
+           1. Use Case Diagram
+Actors:
+Sender: User who composes messages with embedded data
+
+Receiver: User who decrypts and extracts hidden data
+
+Database: Stores encrypted files and metadata
+
+Use Cases:
+Sender Side:
+
+Compose Message (Text + Image/Audio)
+
+Upload Image/Audio
+
+Embed Data (Reversible Steganography + LSB)
+
+Encrypt Image (AES-ECB)
+
+Send Encrypted File via Email
+
+Receiver Side:
+
+View Inbox
+
+Open Encrypted Email
+
+Decrypt Image (AES-ECB)
+
+Extract Hidden Data (Text/Audio)
+
+Generate Audio from Text (Optional)
+
+System:
+
+Store Encrypted File (No Original/Stego Image)
+
+Validate Password/Checksum
+
+Manage User Authentication
+
+2. UML Class Diagram
+Key Classes:
+Person (User):
+
+Attributes: loginid, email, etc.
+
+Relationships: Sends/Receives Message.
+
+Message:
+
+Attributes:
+
+sender, receiver (Person)
+
+subject, password, msg
+
+file (Encrypted image)
+
+attachment, status, etc.
+
+ReversibleDataHiding:
+
+Methods:
+
+embed_data(image, data)
+
+extract_data(image)
+
+ImagePreprocessor:
+
+Methods: preprocess_image()
+
+AES Encryption Utilities:
+
+Handles padding, key derivation (SHA-256), and ECB mode.
+
+Relationships:
+Person → Message (1-to-Many)
+
+Message uses ReversibleDataHiding and AES encryption.
+
+ReversibleDataHiding manipulates image pixels for embedding.
+
+3. Data Flow Diagram (DFD)
+Level 0 (Context Diagram):
+External Entities:
+
+Sender: Provides image, audio, text, password.
+
+Receiver: Requests decryption with password.
+
+Email Service: Transfers encrypted files.
+
+System:
+
+Processes embedding, encryption, decryption, and extraction.
+
+Level 1 (Key Processes):
+Compose Message:
+
+Input: Image + Text/Audio
+
+Process: Embed data → Encrypt → Store encrypted file.
+
+Output: Encrypted file sent via email.
+
+Encrypt Image:
+
+Input: Stego image
+
+Process: Pad data → AES-ECB encryption.
+
+Output: Encrypted bytes.
+
+Decrypt Image:
+
+Input: Encrypted file + Password
+
+Process: AES-ECB decryption → Unpad.
+
+Output: Stego image.
+
+Extract Data:
+
+Input: Decrypted image
+
+Process: LSB extraction → Validate checksum.
+
+Output: Original text + restored image.
+
+Data Stores:
+Encrypted Files: Stored in the database (not original/stego images).
+
+User Data: Stores sender/receiver credentials.
+
+Key Data Flows:
+Image/Audio → Embedding → Encryption → Email → Decryption → Extraction.
+
+Additional Notes:
+Security Constraints:
+
+AES-ECB mode with SHA-256 key derivation.
+
+No storage of original/stego images in the database.
+
+Checksum validation during extraction.
+
+Error Handling:
+
+Password mismatch → Decryption failure.
+
+Invalid checksum → Extraction failure.
+
+Boundary Checks:
+
+Ensure embedded data fits within the image’s LSB capacity.
+
+Handle image format conversions (PNG/JPEG).
+

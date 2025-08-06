@@ -1,0 +1,232 @@
+# views.py (Modified Core Functions)
+from django.views.decorators.csrf import csrf_protect
+from django.core.cache import cache
+import logging
+import hmac
+import binascii
+
+logger = logging.getLogger(__name__)
+
+# Enhanced Encryption Class
+class ImprovedAESEncryption:
+    @staticmethod
+    def encrypt(data, password):
+        salt = os.urandom(16)
+        key = hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 100000)
+        iv = os.urandom(AES.block_size)
+        cipher = AES.new(key, AES.MODE_CBC, iv)
+        encrypted = cipher.encrypt(pad(data, AES.block_size))
+        return salt + iv + encrypted
+
+    @staticmethod
+    def decrypt(encrypted_data, password):
+        salt = encrypted_data[:16]
+        iv = encrypted_data[16:32]
+        ciphertext = encrypted_data[32:]
+        key = hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 100000)
+        cipher = AES.new(key, AES.MODE_CBC, iv)
+        return unpad(cipher.decrypt(ciphertext), AES.block_size)
+
+# Enhanced Reversible Data Hiding with Integrity
+class SecureReversibleDataHiding:
+    @staticmethod
+    def embed_data(image, data, password):
+        # Convert data to bytes if needed
+        if isinstance(data, str):
+            data = data.encode('utf-8')
+        
+        # Generate HMAC for integrity check
+        hmac_digest = hmac.new(
+            hashlib.sha256(password.encode()).digest(),
+            data,
+            hashlib.sha256
+        ).digest()
+        
+        # Create header: [VERSION][HMAC][DATA_LENGTH][DATA]
+        header = b"BLX1" + hmac_digest + len(data).to_bytes(4, 'big') + data
+        
+        # Convert image to RGB array
+        img_array = np.array(image.convert('RGB'))
+        height, width, _ = img_array.shape
+        
+        # Convert header to binary
+        data_bits = ''.join(format(byte, '08b') for byte in header)
+        data_index = 0
+        
+        # Embed data in LSBs
+        for i in range(height):
+            for j in range(width):
+                for k in range(3):  # RGB channels
+                    if data_index < len(data_bits):
+                        img_array[i,j,k] = (img_array[i,j,k] & 0xFE) | int(data_bits[data_index])
+                        data_index += 1
+        return Image.fromarray(img_array)
+
+    @staticmethod
+    def extract_data(image, password):
+        img_array = np.array(image.convert('RGB'))
+        data_bits = []
+        
+        # Extract header bits
+        for i in range(img_array.shape[0]):
+            for j in range(img_array.shape[1]):
+                for k in range(3):
+                    data_bits.append(str(img_array[i,j,k] & 1))
+                    if len(data_bits) >= 320:  # Header size in bits (40 bytes * 8)
+                        header_bytes = bytes([
+                            int(''.join(data_bits[i*8:(i+1)*8]), 2) 
+                            for i in range(40)
+                        ])
+                        # Verify header
+                        version = header_bytes[:4]
+                        if version != b"BLX1":
+                            raise ValueError("Invalid data format")
+                        
+                        hmac_received = header_bytes[4:36]
+                        data_length = int.from_bytes(header_bytes[36:40], 'big')
+                        
+                        # Extract remaining data
+                        total_bits_needed = 40*8 + data_length*8
+                        while len(data_bits) < total_bits_needed:
+                            # Continue extracting bits...
+                        
+                        # Verify HMAC
+                        extracted_data = bytes(...)
+                        hmac_calculated = hmac.new(
+                            hashlib.sha256(password.encode()).digest(),
+                            extracted_data,
+                            hashlib.sha256
+                        ).digest()
+                        
+                        if not hmac.compare_digest(hmac_received, hmac_calculated):
+                            raise ValueError("Data tampering detected")
+                        
+                        return extracted_data
+        raise ValueError("No hidden data found")
+
+# Rate Limiting Decorator
+def rate_limit(key, limit, period):
+    def decorator(view_func):
+        def wrapper(request, *args, **kwargs):
+            if request.user.is_authenticated:
+                user_key = f"{key}_{request.user.id}"
+            else:
+                user_key = f"{key}_{request.META['REMOTE_ADDR']}"
+            
+            count = cache.get(user_key, 0)
+            if count >= limit:
+                return HttpResponse("Too many requests", status=429)
+            cache.set(user_key, count+1, period)
+            return view_func(request, *args, **kwargs)
+        return wrapper
+    return decorator
+
+# Modified Compose Function
+@csrf_protect
+@rate_limit(key="compose", limit=5, period=60)
+def compose(request):
+    uid = request.session["uid"]
+    sender = Person.objects.get(loginid=uid)
+    msg = ""
+    
+    if request.method == 'POST':
+        try:
+            receiver_email = request.POST["email"]
+            subject = request.POST["subject"]
+            password = request.POST["password"]
+            message = request.POST["message"]
+            image = request.FILES["imgfile"]
+            
+            if len(password) < 8:
+                raise ValueError("Password must be at least 8 characters")
+            
+            if not Person.objects.filter(email=receiver_email).exists():
+                return HttpResponse("<script>alert('Recipient not found')</script>")
+            
+            # Process image
+            with Image.open(image) as img:
+                # Convert to RGB if necessary
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                
+                # Embed data with integrity protection
+                stego_image = SecureReversibleDataHiding.embed_data(img, message, password)
+                
+                # Save to bytes
+                img_byte_arr = BytesIO()
+                stego_image.save(img_byte_arr, format='PNG')
+                image_data = img_byte_arr.getvalue()
+                
+                # Encrypt image data
+                encrypted_data = ImprovedAESEncryption.encrypt(image_data, password)
+                
+                # Create message with security metadata
+                receiver = Person.objects.get(email=receiver_email)
+                Message.objects.create(
+                    sender=sender,
+                    receiver=receiver,
+                    subject=subject,
+                    password=password,
+                    file=ContentFile(encrypted_data, name=f"secure_{image.name}"),
+                    status="Sent",
+                    security_version="BLX1"
+                )
+                
+                # Send password email (existing functionality)
+                send_mail(
+                    subject="Your Secure Message Password",
+                    message=f"Password: {password}",
+                    from_email=sender.email,
+                    recipient_list=[receiver_email]
+                )
+                
+                return HttpResponse("<script>alert('Message sent securely')</script>")
+            
+        except Exception as e:
+            logger.error(f"Compose error: {str(e)}")
+            return HttpResponse(f"<script>alert('Error: {str(e)}')</script>")
+    
+    return render(request, "USER/compose.html")
+
+# Modified ReadMail Function
+@csrf_protect
+def readMail(request):
+    mail_id = request.GET.get("id")
+    if not mail_id:
+        return redirect('/inbox')
+    
+    try:
+        mail = Message.objects.get(id=mail_id)
+        mail.file.seek(0)
+        encrypted_data = mail.file.read()
+        
+        if request.method == 'POST':
+            password = request.POST.get("password", "")
+            
+            try:
+                # Decrypt image data
+                decrypted_data = ImprovedAESEncryption.decrypt(encrypted_data, password)
+                
+                # Extract hidden data with integrity check
+                with Image.open(BytesIO(decrypted_data)) as stego_image:
+                    extracted_data = SecureReversibleDataHiding.extract_data(stego_image, password)
+                    
+                    # Convert to base64 for display
+                    img_byte_arr = BytesIO()
+                    stego_image.save(img_byte_arr, format='PNG')
+                    img_base64 = base64.b64encode(img_byte_arr.getvalue()).decode()
+                    
+                    return render(request, "USER/readMail.html", {
+                        'mail': mail,
+                        'extracted_data': extracted_data.decode(),
+                        'image_data': f"data:image/png;base64,{img_base64}"
+                    })
+            
+            except Exception as e:
+                logger.warning(f"Decryption failed: {str(e)}")
+                return HttpResponse("<script>alert('Invalid password or tampered data')</script>")
+        
+        return render(request, "USER/readMail.html", {'mail': mail})
+    
+    except Message.DoesNotExist:
+        return redirect('/inbox')

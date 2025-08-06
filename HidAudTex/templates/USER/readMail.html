@@ -1,0 +1,132 @@
+{% extends "USER/userBase.html" %}
+{% block header %}
+{% load static %}
+<main class="main-area fix">
+    <!-- breadcrumb-area -->
+    <section class="breadcrumb-area">
+        <div class="breadcrumb-bg" data-background="{% static 'assets/img/bg/breadcrumb_bg.png' %}"></div>
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-xl-10">
+                    <div class="breadcrumb-content text-center">
+                        <h3 class="title">Mail</h3>
+                        <nav aria-label="breadcrumb">
+                            <ol class="breadcrumb">
+                                <li class="breadcrumb-item"><a href="/index">Home</a></li>
+                                <li class="breadcrumb-item active" aria-current="page">Read Mail</li>
+                            </ol>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <hr>
+    <section class="contact-area">
+        <!-- <div id="map" data-background="assets/img/bg/map.jpg' %}"></div> -->
+        <div class="contact-form-wrap">
+            <div class="container">
+                <div class="row justify-content-center">
+                    <div class="col-xl-5 col-lg-7 col-md-9 col-sm-10">
+                        <div class="section-title text-center mb-50">
+                            <h2 class="title">Enter Password</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="row justify-content-center">
+                    <div class="col-xxl-8 col-xl-9 col-lg-10">
+                        <form class="contact-form text-center" method="post">
+                            {% csrf_token %}
+                            {% if mailData %}
+                            {% if mailData.processed_image %}
+                            <div class="image-upload text-center" style="margin-bottom: 50px;">
+                                <label for="file-input">
+                                    <img id="img" src="/static/media/{{mailData.processed_image}}" alt="Upload Image" title="Upload Image"
+                                        style="margin: auto" height="400" width="400" />
+                                </label>
+                            </div>
+                            {% endif %} 
+                            {% endif %}
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="form-grp">
+                                        <input type="password" required placeholder="Enter Password" name="password">
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn">Open</button>
+                            <br>
+                            <br>
+                            {% if image_data_url %}
+                                <img src="{{ image_data_url }}" alt="Decrypted Stego Image" style="max-width: 100%;">
+                            {% endif %}
+
+                            <!-- Display extracted message -->
+                            {% if encryption_key %}
+                                <div class="message">
+                                    <h3>Hidden Message:</h3>
+                                    <p>{{ encryption_key }}</p>
+                                </div>
+                            {% endif %}
+                            {% if image_data_url %}
+                                <div class="decrypted-image">
+                                    <button onclick="downloadImage()" class="btn btn-success mt-3">Download Attachment</button>
+                                </div>
+                            {% endif %}
+                            <!--{% if mailData %}
+                            {% if mailData.attachment %}
+                            <a class="btn btn-success" href="/static/media/{{mailData.attachment}}" download="">Download
+                                Attachment</a>
+                            <br> <br>
+                            {% endif %}!-->
+                            <!--<input onclick="responsiveVoice.speak('{{encryption_key}}');" class="btn btn-success"
+                                type='button' value='🔊 Play' />-->
+                            <button type="button" class="btn btn-success"
+                                onclick="window.location.href='/download?text={{encryption_key}}&id={{mailData.id}}'">Download</button>
+                            {% endif %}
+                        </form>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!--<script src='https://code.responsivevoice.org/responsivevoice.js'></script>-->
+    <script>
+        // Function to convert text to speech using the Web Speech API
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'en-US'; // Set the language
+                window.speechSynthesis.speak(utterance);
+            } else {
+                alert("Your browser does not support the Web Speech API. Please use a modern browser like Chrome, Firefox, or Edge.");}
+            alert('Message is:',+encryption_key)
+            }
+        function downloadImage() {
+            // Get the data URL from the image
+            const dataUrl = "{{ image_data_url|safe }}";
+                    
+            // Convert data URL to Blob
+            fetch(dataUrl)
+            .then(res => res.blob())
+            .then(blob => {
+            // Create temporary anchor element
+            const a = document.createElement('a');
+            const url = window.URL.createObjectURL(blob);
+                            
+            a.href = url;
+            a.download = 'decrypted_image.png';  // Set default filename
+            document.body.appendChild(a);
+            a.click();
+                            
+            // Cleanup
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            })
+            .catch(error => console.error('Error downloading image:', error));
+            }
+    </script>
+
+    {% endblock %}
